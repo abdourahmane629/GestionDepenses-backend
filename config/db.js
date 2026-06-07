@@ -1,13 +1,18 @@
 const mysql = require("mysql2");
 
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "Abdou660",
-  database: process.env.DB_NAME || "gestion_depenses",
-  port: process.env.DB_PORT || 3306,
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
-});
+// Railway injecte MYSQL_URL automatiquement
+const connectionConfig = process.env.MYSQL_URL
+  ? { uri: process.env.MYSQL_URL, ssl: { rejectUnauthorized: false } }
+  : {
+      host: process.env.DB_HOST || process.env.MYSQLHOST || "localhost",
+      user: process.env.DB_USER || process.env.MYSQLUSER || "root",
+      password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || "Abdou660",
+      database: process.env.DB_NAME || process.env.MYSQLDATABASE || "gestion_depenses",
+      port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || "3306"),
+      ssl: { rejectUnauthorized: false },
+    };
+
+const db = mysql.createConnection(connectionConfig);
 
 db.connect((err) => {
   if (err) {
