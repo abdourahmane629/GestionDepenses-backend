@@ -26,9 +26,9 @@ const initDB = () => {
     CREATE TABLE IF NOT EXISTS expenses (
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
-      titre VARCHAR(150) NOT NULL,
-      montant DECIMAL(10,2) NOT NULL,
-      categorie VARCHAR(100),
+      title VARCHAR(150) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      category VARCHAR(100),
       date DATE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
