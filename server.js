@@ -22,26 +22,44 @@ const initDB = () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
-  const createExpenses = `
-    CREATE TABLE IF NOT EXISTS expenses (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id INT NOT NULL,
-      title VARCHAR(150) NOT NULL,
-      amount DECIMAL(10,2) NOT NULL,
-      category VARCHAR(100),
-      date DATE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `;
   db.query(createUsers, (err) => {
     if (err) return console.error("❌ Erreur création table users:", err.message);
     console.log("✅ Table users OK");
-    db.query(createExpenses, (err2) => {
-      if (err2) return console.error("❌ Erreur création table expenses:", err2.message);
-      console.log("✅ Table expenses OK");
+
+    // Vérifier si la colonne s'appelle 'titre' (ancienne version) ou 'title'
+    db.query("SHOW COLUMNS FROM expenses LIKE 'titre'", (errCheck, cols) => {
+      const needsMigration = !errCheck && cols && cols.length > 0;
+
+      if (needsMigration) {
+        // Recréer la table avec les bons noms de colonnes
+        db.query("DROP TABLE IF EXISTS expenses", (errDrop) => {
+          if (errDrop) return console.error("❌ Erreur DROP expenses:", errDrop.message);
+          console.log("🔄 Table expenses recréée avec les bons noms de colonnes");
+          createExpensesTable();
+        });
+      } else {
+        createExpensesTable();
+      }
     });
   });
+
+  function createExpensesTable() {
+    db.query(`
+      CREATE TABLE IF NOT EXISTS expenses (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        title VARCHAR(150) NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        category VARCHAR(100),
+        date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `, (err) => {
+      if (err) return console.error("❌ Erreur création table expenses:", err.message);
+      console.log("✅ Table expenses OK");
+    });
+  }
 };
 
 initDB();
