@@ -1,17 +1,30 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 
-// Créer le transporteur email
-const createTransporter = () =>
-  nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+// Envoi email via Brevo (HTTP API — non bloqué par Railway)
+const sendEmail = async (to, subject, html) => {
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({
+      sender: {
+        name: "GestionDépenses",
+        email: process.env.EMAIL_USER,
+      },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
   });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || "Erreur Brevo");
+  }
+};
 
 /* ===== REGISTER ===== */
 exports.register = (req, res) => {
@@ -161,25 +174,21 @@ exports.forgotPassword = (req, res) => {
         if (err2) return res.status(500).json({ message: "Erreur serveur" });
 
         try {
-          const transporter = createTransporter();
-          await transporter.sendMail({
-            from: `"GestionDépenses" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Code de réinitialisation de mot de passe",
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 30px;">
-                <h2 style="color: #2ecc71; margin-bottom: 10px;">Réinitialisation de mot de passe</h2>
-                <p style="color: #555;">Votre code de vérification est :</p>
-                <div style="font-size: 40px; font-weight: bold; color: #1a1a2e;
-                     background: #f5f5f5; padding: 24px; border-radius: 12px;
-                     text-align: center; letter-spacing: 10px; margin: 20px 0;">
-                  ${code}
-                </div>
-                <p style="color: #888; font-size: 13px;">Ce code expire dans <strong>15 minutes</strong>.</p>
-                <p style="color: #bbb; font-size: 12px;">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+          await sendEmail(
+            email,
+            "Code de réinitialisation de mot de passe",
+            `<div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 30px;">
+              <h2 style="color: #2ecc71; margin-bottom: 10px;">Réinitialisation de mot de passe</h2>
+              <p style="color: #555;">Votre code de vérification est :</p>
+              <div style="font-size: 40px; font-weight: bold; color: #1a1a2e;
+                   background: #f5f5f5; padding: 24px; border-radius: 12px;
+                   text-align: center; letter-spacing: 10px; margin: 20px 0;">
+                ${code}
               </div>
-            `,
-          });
+              <p style="color: #888; font-size: 13px;">Ce code expire dans <strong>15 minutes</strong>.</p>
+              <p style="color: #bbb; font-size: 12px;">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+            </div>`
+          );
           res.json({ message: "Code envoyé par email" });
         } catch (emailErr) {
           console.error("Erreur envoi email:", emailErr.message);
